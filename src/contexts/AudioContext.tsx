@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
 import { Howl } from 'howler';
-import type { Track, AudioState } from '../types';
+import type { Track, AudioState, RepeatMode } from '../types';
 
 interface AudioContextType extends AudioState {
   playTrack: (track: Track) => void;
@@ -13,6 +13,8 @@ interface AudioContextType extends AudioState {
   addToPlaylist: (tracks: Track[]) => void;
   removeFromPlaylist: (trackId: string) => void;
   getCurrentHowl: () => Howl | null;
+  toggleShuffle: () => void;
+  setRepeatMode: (mode: RepeatMode) => void;
 }
 
 type AudioAction =
@@ -25,7 +27,10 @@ type AudioAction =
   | { type: 'SET_PLAYLIST'; payload: Track[] }
   | { type: 'ADD_TO_PLAYLIST'; payload: Track[] }
   | { type: 'REMOVE_FROM_PLAYLIST'; payload: string }
-  | { type: 'SET_CURRENT_INDEX'; payload: number };
+  | { type: 'SET_CURRENT_INDEX'; payload: number }
+  | { type: 'TOGGLE_SHUFFLE' }
+  | { type: 'SET_REPEAT_MODE'; payload: RepeatMode }
+  | { type: 'SET_SHUFFLED_INDICES'; payload: number[] };
 
 const initialState: AudioState = {
   isPlaying: false,
@@ -36,6 +41,9 @@ const initialState: AudioState = {
   isLoading: false,
   playlist: [],
   currentIndex: -1,
+  isShuffled: false,
+  repeatMode: 'none',
+  shuffledIndices: [],
 };
 
 function audioReducer(state: AudioState, action: AudioAction): AudioState {
@@ -63,8 +71,93 @@ function audioReducer(state: AudioState, action: AudioAction): AudioState {
       };
     case 'SET_CURRENT_INDEX':
       return { ...state, currentIndex: action.payload };
+    case 'TOGGLE_SHUFFLE':
+      return { 
+        ...state, 
+        isShuffled: !state.isShuffled,
+        shuffledIndices: !state.isShuffled 
+          ? generateShuffledIndices(state.playlist.length, state.currentIndex)
+          : []
+      };
+    case 'SET_REPEAT_MODE':
+      return { ...state, repeatMode: action.payload };
+    case 'SET_SHUFFLED_INDICES':
+      return { ...state, shuffledIndices: action.payload };
     default:
       return state;
+  }
+}
+
+function generateShuffledIndices(playlistLength: number, currentIndex: number): number[] {
+  const indices = Array.from({ length: playlistLength }, (_, i) => i);
+  // Remove current track from shuffle
+  if (currentIndex >= 0) {
+    indices.splice(currentIndex, 1);
+  }
+  
+  // Fisher-Yates shuffle
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  
+  return indices;
+}
+
+function getNextTrackIndex(
+  currentIndex: number, 
+  playlistLength: number, 
+  isShuffled: boolean, 
+  shuffledIndices: number[], 
+  repeatMode: RepeatMode
+): number {
+  if (playlistLength === 0) return -1;
+  
+  if (isShuffled && shuffledIndices.length > 0) {
+    const currentShuffleIndex = shuffledIndices.findIndex(idx => idx === currentIndex);
+    const nextShuffleIndex = currentShuffleIndex + 1;
+    
+    if (nextShuffleIndex < shuffledIndices.length) {
+      return shuffledIndices[nextShuffleIndex];
+    } else if (repeatMode === 'all') {
+      return shuffledIndices[0];
+    }
+    return -1;
+  } else {
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < playlistLength) {
+      return nextIndex;
+    } else if (repeatMode === 'all') {
+      return 0;
+    }
+    return -1;
+  }
+}
+
+function getPreviousTrackIndex(
+  currentIndex: number, 
+  playlistLength: number, 
+  isShuffled: boolean, 
+  shuffledIndices: number[]
+): number {
+  if (playlistLength === 0) return -1;
+  
+  if (isShuffled && shuffledIndices.length > 0) {
+    const currentShuffleIndex = shuffledIndices.findIndex(idx => idx === currentIndex);
+    const prevShuffleIndex = currentShuffleIndex - 1;
+    
+    if (prevShuffleIndex >= 0) {
+      return shuffledIndices[prevShuffleIndex];
+    } else {
+      return shuffledIndices[shuffledIndices.length - 1];
+    }
+  } else {
+    const prevIndex = currentIndex - 1;
+    if (prevIndex >= 0) {
+      return prevIndex;
+    } else {
+      return playlistLength - 1;
+    }
   }
 }
 
@@ -102,11 +195,18 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       },
       onend: () => {
         dispatch({ type: 'SET_PLAYING', payload: false });
-        // Use current state for auto-advance to next track
+        // Handle auto-advance based on repeat mode
         const currentIndex = state.playlist.findIndex(t => t.id === track.id);
-        const nextIndex = currentIndex + 1;
-        if (nextIndex < state.playlist.length) {
-          playTrack(state.playlist[nextIndex]);
+        
+        if (state.repeatMode === 'one') {
+          // Repeat current track
+          playTrack(track);
+        } else {
+          // Get next track index based on shuffle mode
+          const nextIndex = getNextTrackIndex(currentIndex, state.playlist.length, state.isShuffled, state.shuffledIndices, state.repeatMode);
+          if (nextIndex !== -1) {
+            playTrack(state.playlist[nextIndex]);
+          }
         }
       },
       onstop: () => {
@@ -116,7 +216,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
     currentHowl.volume(state.volume);
     currentHowl.play();
-  }, [state.playlist, state.volume]);
+  }, [state.playlist, state.volume, state.isShuffled, state.repeatMode, state.shuffledIndices]);
 
   const pause = useCallback(() => {
     if (currentHowl) {
@@ -131,18 +231,29 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const nextTrack = useCallback(() => {
-    const nextIndex = state.currentIndex + 1;
-    if (nextIndex < state.playlist.length) {
+    const nextIndex = getNextTrackIndex(
+      state.currentIndex, 
+      state.playlist.length, 
+      state.isShuffled, 
+      state.shuffledIndices, 
+      state.repeatMode
+    );
+    if (nextIndex !== -1) {
       playTrack(state.playlist[nextIndex]);
     }
-  }, [state.currentIndex, state.playlist, playTrack]);
+  }, [state.currentIndex, state.playlist, state.isShuffled, state.shuffledIndices, state.repeatMode, playTrack]);
 
   const previousTrack = useCallback(() => {
-    const prevIndex = state.currentIndex - 1;
-    if (prevIndex >= 0) {
+    const prevIndex = getPreviousTrackIndex(
+      state.currentIndex, 
+      state.playlist.length, 
+      state.isShuffled, 
+      state.shuffledIndices
+    );
+    if (prevIndex !== -1) {
       playTrack(state.playlist[prevIndex]);
     }
-  }, [state.currentIndex, state.playlist, playTrack]);
+  }, [state.currentIndex, state.playlist, state.isShuffled, state.shuffledIndices, playTrack]);
 
   const setVolume = useCallback((volume: number) => {
     dispatch({ type: 'SET_VOLUME', payload: volume });
@@ -170,16 +281,39 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     return currentHowl;
   }, []);
 
+  const toggleShuffle = useCallback(() => {
+    dispatch({ type: 'TOGGLE_SHUFFLE' });
+  }, []);
+
+  const setRepeatMode = useCallback((mode: RepeatMode) => {
+    dispatch({ type: 'SET_REPEAT_MODE', payload: mode });
+  }, []);
+
   React.useEffect(() => {
-    const updateTime = () => {
+    let animationFrame: number;
+    let lastUpdateTime = 0;
+    
+    const updateTime = (timestamp: number) => {
       if (currentHowl && state.isPlaying) {
-        const currentTime = typeof currentHowl.seek() === 'number' ? currentHowl.seek() : 0;
-        dispatch({ type: 'SET_CURRENT_TIME', payload: currentTime });
+        // Throttle updates to ~4 times per second (250ms) instead of 10 times
+        if (timestamp - lastUpdateTime >= 250) {
+          const currentTime = typeof currentHowl.seek() === 'number' ? currentHowl.seek() : 0;
+          dispatch({ type: 'SET_CURRENT_TIME', payload: currentTime });
+          lastUpdateTime = timestamp;
+        }
+        animationFrame = requestAnimationFrame(updateTime);
       }
     };
 
-    const interval = setInterval(updateTime, 100);
-    return () => clearInterval(interval);
+    if (state.isPlaying) {
+      animationFrame = requestAnimationFrame(updateTime);
+    }
+    
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
   }, [state.isPlaying]);
 
   const value: AudioContextType = {
@@ -194,6 +328,8 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     addToPlaylist,
     removeFromPlaylist,
     getCurrentHowl,
+    toggleShuffle,
+    setRepeatMode,
   };
 
   return (

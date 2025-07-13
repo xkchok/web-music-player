@@ -33,4 +33,62 @@
   .slider::-moz-range-thumb {
     @apply w-4 h-4 bg-gradient-to-r from-primary-400 to-accent-400 rounded-full cursor-pointer border-0 shadow-lg;
   }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(56 189 248 / 0.6) transparent;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, rgb(56 189 248 / 0.6), rgb(232 121 249 / 0.6));
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, rgb(56 189 248 / 0.8), rgb(232 121 249 / 0.8));
+  }
+
+  /* GPU acceleration - only when needed */
+  .gpu-hover {
+    transform: translate3d(0, 0, 0);
+  }
+  
+  .gpu-hover:hover {
+    will-change: transform;
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  
+  .gpu-hover:not(:hover) {
+    will-change: auto;
+  }
+
+  /* Optimize playlist animations for GPU - only during animation */
+  .playlist-item {
+    contain: layout style paint;
+    transform: translate3d(0, 0, 0);
+  }
+  
+  /* Only use will-change during actual interactions */
+  .control-button {
+    transform: translate3d(0, 0, 0);
+  }
+  
+  .control-button:hover,
+  .control-button:active {
+    will-change: transform;
+  }
+  
+  .control-button:not(:hover):not(:active) {
+    will-change: auto;
+  }
 }

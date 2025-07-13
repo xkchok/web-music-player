@@ -11,6 +11,8 @@ export interface Track {
   albumArt?: string;
 }
 
+export type RepeatMode = 'none' | 'one' | 'all';
+
 export interface AudioState {
   isPlaying: boolean;
   currentTrack: Track | null;
@@ -20,6 +22,9 @@ export interface AudioState {
   isLoading: boolean;
   playlist: Track[];
   currentIndex: number;
+  isShuffled: boolean;
+  repeatMode: RepeatMode;
+  shuffledIndices: number[];
 }
 
 export interface WaveformRef {

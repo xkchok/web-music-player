@@ -5,7 +5,7 @@ import { parseBlob } from 'music-metadata';
 import { useAudio } from '../contexts/AudioContext';
 import type { Track } from '../types';
 
-export function FileUpload() {
+export const FileUpload = React.memo(function FileUpload() {
   const { addToPlaylist, playTrack, currentTrack } = useAudio();
 
   const handleFileUpload = useCallback(async (files: FileList) => {
@@ -13,50 +13,57 @@ export function FileUpload() {
       file.type.startsWith('audio/')
     );
 
-    const tracks: Track[] = await Promise.all(
-      audioFiles.map(async (file) => {
-        const url = URL.createObjectURL(file);
-        const extension = file.name.split('.').pop()?.toLowerCase();
-        const format = extension && ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(extension) ? extension : 'mp3';
+    const tracks: Track[] = [];
+    
+    // Process files sequentially to avoid blocking the UI
+    for (const file of audioFiles) {
+      const url = URL.createObjectURL(file);
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      const format = extension && ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(extension) ? extension : 'mp3';
+      
+      let title = file.name.replace(/\.[^/.]+$/, '');
+      let artist = 'Unknown Artist';
+      let albumArt: string | undefined;
+
+      try {
+        // Use setTimeout to yield control back to the event loop
+        await new Promise(resolve => setTimeout(resolve, 0));
         
-        let title = file.name.replace(/\.[^/.]+$/, '');
-        let artist = 'Unknown Artist';
-        let albumArt: string | undefined;
-
-        try {
-          const metadata = await parseBlob(file);
-          
-          if (metadata.common.title) {
-            title = metadata.common.title;
-          }
-          
-          if (metadata.common.artist || metadata.common.albumartist) {
-            artist = metadata.common.artist || metadata.common.albumartist || 'Unknown Artist';
-          }
-
-          if (metadata.common.picture && metadata.common.picture.length > 0) {
-            const picture = metadata.common.picture[0];
-            const blob = new Blob([picture.data], { type: picture.format });
-            albumArt = URL.createObjectURL(blob);
-          }
-        } catch (error) {
-          console.log('Could not read metadata for', file.name, ':', error);
+        const metadata = await parseBlob(file);
+        
+        if (metadata.common.title) {
+          title = metadata.common.title;
         }
         
-        return {
-          id: `${Date.now()}-${Math.random()}`,
-          title,
-          artist,
-          duration: 0,
-          url,
-          file,
-          format,
-          albumArt,
-        };
-      })
-    );
+        if (metadata.common.artist || metadata.common.albumartist) {
+          artist = metadata.common.artist || metadata.common.albumartist || 'Unknown Artist';
+        }
 
-    addToPlaylist(tracks);
+        if (metadata.common.picture && metadata.common.picture.length > 0) {
+          const picture = metadata.common.picture[0];
+          const blob = new Blob([picture.data], { type: picture.format });
+          albumArt = URL.createObjectURL(blob);
+        }
+      } catch (error) {
+        console.log('Could not read metadata for', file.name, ':', error);
+      }
+      
+      const track: Track = {
+        id: `${Date.now()}-${Math.random()}`,
+        title,
+        artist,
+        duration: 0,
+        url,
+        file,
+        format,
+        albumArt,
+      };
+      
+      tracks.push(track);
+      
+      // Add tracks incrementally for better perceived performance
+      addToPlaylist([track]);
+    }
     
     // Only start playing if no track is currently playing
     if (tracks.length > 0 && !currentTrack) {
@@ -119,4 +126,4 @@ export function FileUpload() {
       </div>
     </motion.div>
   );
-}
+});

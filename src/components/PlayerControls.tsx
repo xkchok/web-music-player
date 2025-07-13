@@ -1,3 +1,4 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { 
   Play, 
@@ -5,12 +6,15 @@ import {
   SkipBack, 
   SkipForward, 
   Volume2, 
-  VolumeX 
+  VolumeX,
+  Shuffle,
+  Repeat,
+  Repeat1
 } from 'lucide-react';
 import { useAudio } from '../contexts/AudioContext';
 import { formatTime } from '../utils/formatTime';
 
-export function PlayerControls() {
+export const PlayerControls = React.memo(function PlayerControls() {
   const { 
     isPlaying, 
     currentTrack, 
@@ -22,7 +26,11 @@ export function PlayerControls() {
     resume, 
     nextTrack, 
     previousTrack,
-    seekTo 
+    seekTo,
+    isShuffled,
+    repeatMode,
+    toggleShuffle,
+    setRepeatMode
   } = useAudio();
 
   const isMuted = volume === 0;
@@ -55,6 +63,24 @@ export function PlayerControls() {
     seekTo(newTime);
   };
 
+  const handleRepeatClick = () => {
+    const modes = ['none', 'all', 'one'] as const;
+    const currentIndex = modes.indexOf(repeatMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    setRepeatMode(modes[nextIndex]);
+  };
+
+  const getRepeatIcon = () => {
+    switch (repeatMode) {
+      case 'one':
+        return <Repeat1 className="w-4 h-4" />;
+      case 'all':
+        return <Repeat className="w-4 h-4" />;
+      default:
+        return <Repeat className="w-4 h-4" />;
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Progress Bar */}
@@ -83,11 +109,23 @@ export function PlayerControls() {
 
       {/* Controls */}
       <div className="flex items-center justify-center space-x-4 p-4">
+        {/* Shuffle Button */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={toggleShuffle}
+          className={`control-button p-2 rounded-full glass transition-colors ${
+            isShuffled ? 'bg-primary-500/30 text-primary-300' : 'hover:bg-white/20 text-white/70'
+          }`}
+        >
+          <Shuffle className="w-4 h-4" />
+        </motion.button>
+
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           onClick={previousTrack}
-          className="p-3 rounded-full glass hover:bg-white/20 transition-colors"
+          className="control-button p-3 rounded-full glass hover:bg-white/20 transition-colors"
           disabled={!currentTrack}
         >
           <SkipBack className="w-5 h-5 text-white" />
@@ -97,7 +135,7 @@ export function PlayerControls() {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           onClick={togglePlay}
-          className="p-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 transition-all shadow-lg"
+          className="control-button p-4 rounded-full bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 transition-all shadow-lg"
           disabled={!currentTrack}
         >
           {isPlaying ? (
@@ -111,10 +149,22 @@ export function PlayerControls() {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
           onClick={nextTrack}
-          className="p-3 rounded-full glass hover:bg-white/20 transition-colors"
+          className="control-button p-3 rounded-full glass hover:bg-white/20 transition-colors"
           disabled={!currentTrack}
         >
           <SkipForward className="w-5 h-5 text-white" />
+        </motion.button>
+
+        {/* Repeat Button */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleRepeatClick}
+          className={`control-button p-2 rounded-full glass transition-colors ${
+            repeatMode !== 'none' ? 'bg-accent-500/30 text-accent-300' : 'hover:bg-white/20 text-white/70'
+          }`}
+        >
+          {getRepeatIcon()}
         </motion.button>
 
         <div className="flex items-center space-x-2 ml-8">
@@ -122,7 +172,7 @@ export function PlayerControls() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             onClick={toggleMute}
-            className="p-2 rounded-full glass hover:bg-white/20 transition-colors"
+            className="control-button p-2 rounded-full glass hover:bg-white/20 transition-colors"
           >
             {isMuted ? (
               <VolumeX className="w-4 h-4 text-white" />
@@ -153,4 +203,4 @@ export function PlayerControls() {
       </div>
     </div>
   );
-}
+});

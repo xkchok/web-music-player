@@ -1,7 +1,8 @@
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useAudio } from '../contexts/AudioContext';
 
-export function TrackInfo() {
+export const TrackInfo = React.memo(function TrackInfo() {
   const { currentTrack, isLoading } = useAudio();
 
   if (!currentTrack) {
@@ -38,4 +39,4 @@ export function TrackInfo() {
       )}
     </motion.div>
   );
-}
+});

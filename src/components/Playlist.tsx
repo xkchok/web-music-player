@@ -1,9 +1,10 @@
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Music } from 'lucide-react';
 import { useAudio } from '../contexts/AudioContext';
 import { formatTime } from '../utils/formatTime';
 
-export function Playlist() {
+export const Playlist = React.memo(function Playlist() {
   const { 
     playlist, 
     currentTrack, 
@@ -28,7 +29,7 @@ export function Playlist() {
     <div className="glass rounded-xl p-6">
       <h3 className="text-xl font-semibold text-white mb-4">Playlist</h3>
       
-      <div className="space-y-2 max-h-96 overflow-y-auto">
+      <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
         <AnimatePresence>
           {playlist.map((track, index) => {
             const isCurrentTrack = currentTrack?.id === track.id;
@@ -40,7 +41,7 @@ export function Playlist() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ delay: index * 0.05 }}
-                className={`flex items-center p-3 rounded-lg transition-colors cursor-pointer group ${
+                className={`playlist-item flex items-center p-3 rounded-lg transition-colors cursor-pointer group ${
                   isCurrentTrack 
                     ? 'bg-gradient-to-r from-primary-500/20 to-accent-500/20' 
                     : 'hover:bg-white/10'
@@ -92,4 +93,4 @@ export function Playlist() {
       </div>
     </div>
   );
-}
+});
