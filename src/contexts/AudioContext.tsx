@@ -12,6 +12,7 @@ interface AudioContextType extends AudioState {
   seekTo: (time: number) => void;
   addToPlaylist: (tracks: Track[]) => void;
   removeFromPlaylist: (trackId: string) => void;
+  reorderPlaylist: (oldIndex: number, newIndex: number) => void;
   getCurrentHowl: () => Howl | null;
   toggleShuffle: () => void;
   setRepeatMode: (mode: RepeatMode) => void;
@@ -28,6 +29,7 @@ type AudioAction =
   | { type: 'ADD_TO_PLAYLIST'; payload: Track[] }
   | { type: 'REMOVE_FROM_PLAYLIST'; payload: string }
   | { type: 'SET_CURRENT_INDEX'; payload: number }
+  | { type: 'REORDER_PLAYLIST'; payload: { oldIndex: number; newIndex: number } }
   | { type: 'TOGGLE_SHUFFLE' }
   | { type: 'SET_REPEAT_MODE'; payload: RepeatMode }
   | { type: 'SET_SHUFFLED_INDICES'; payload: number[] };
@@ -71,6 +73,32 @@ function audioReducer(state: AudioState, action: AudioAction): AudioState {
       };
     case 'SET_CURRENT_INDEX':
       return { ...state, currentIndex: action.payload };
+    case 'REORDER_PLAYLIST': {
+      const { oldIndex, newIndex } = action.payload;
+      const newPlaylist = [...state.playlist];
+      const [movedItem] = newPlaylist.splice(oldIndex, 1);
+      newPlaylist.splice(newIndex, 0, movedItem);
+      
+      // Update current index if the current track was moved or affected
+      let newCurrentIndex = state.currentIndex;
+      if (state.currentIndex === oldIndex) {
+        newCurrentIndex = newIndex;
+      } else if (oldIndex < state.currentIndex && newIndex >= state.currentIndex) {
+        newCurrentIndex = state.currentIndex - 1;
+      } else if (oldIndex > state.currentIndex && newIndex <= state.currentIndex) {
+        newCurrentIndex = state.currentIndex + 1;
+      }
+      
+      return { 
+        ...state, 
+        playlist: newPlaylist, 
+        currentIndex: newCurrentIndex,
+        // Reset shuffle indices when manually reordering
+        shuffledIndices: state.isShuffled 
+          ? generateShuffledIndices(newPlaylist.length, newCurrentIndex)
+          : state.shuffledIndices
+      };
+    }
     case 'TOGGLE_SHUFFLE':
       return { 
         ...state, 
@@ -289,6 +317,10 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'SET_REPEAT_MODE', payload: mode });
   }, []);
 
+  const reorderPlaylist = useCallback((oldIndex: number, newIndex: number) => {
+    dispatch({ type: 'REORDER_PLAYLIST', payload: { oldIndex, newIndex } });
+  }, []);
+
   React.useEffect(() => {
     let animationFrame: number;
     let lastUpdateTime = 0;
@@ -327,6 +359,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     seekTo,
     addToPlaylist,
     removeFromPlaylist,
+    reorderPlaylist,
     getCurrentHowl,
     toggleShuffle,
     setRepeatMode,

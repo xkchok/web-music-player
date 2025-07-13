@@ -1,8 +1,26 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Music, Search } from 'lucide-react';
+import { X, Music, Search, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import {
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useAudio } from '../contexts/AudioContext';
 import { formatTime } from '../utils/formatTime';
+import type { Track } from '../types';
 
 // Utility function to highlight search matches
 function HighlightText({ text, searchQuery }: { text: string; searchQuery: string }) {
@@ -29,16 +47,140 @@ function HighlightText({ text, searchQuery }: { text: string; searchQuery: strin
   );
 }
 
+// Sortable track item component
+function SortableTrackItem({ 
+  track, 
+  isCurrentTrack, 
+  searchQuery,
+  onPlay,
+  onRemove,
+  isPlaying,
+  isDragDisabled = false
+}: {
+  track: Track;
+  isCurrentTrack: boolean;
+  searchQuery: string;
+  onPlay: () => void;
+  onRemove: () => void;
+  isPlaying: boolean;
+  isDragDisabled?: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ 
+    id: track.id,
+    disabled: isDragDisabled,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`playlist-item flex items-center p-3 rounded-lg transition-colors cursor-pointer group ${
+        isCurrentTrack 
+          ? 'bg-gradient-to-r from-primary-500/20 to-accent-500/20' 
+          : 'hover:bg-white/10'
+      } ${isDragging ? 'opacity-50 z-50' : ''}`}
+      onClick={onPlay}
+    >
+      {/* Drag Handle */}
+      {!isDragDisabled && (
+        <div
+          {...attributes}
+          {...listeners}
+          className="drag-handle opacity-0 group-hover:opacity-100 mr-2 p-1 cursor-grab active:cursor-grabbing transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="w-4 h-4 text-white/40" />
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
+        <p className={`font-medium truncate ${
+          isCurrentTrack ? 'text-white' : 'text-white/90'
+        }`}>
+          <HighlightText text={track.title} searchQuery={searchQuery} />
+        </p>
+        <p className="text-white/60 text-sm truncate">
+          <HighlightText text={track.artist} searchQuery={searchQuery} />
+        </p>
+      </div>
+      
+      <div className="flex items-center space-x-2">
+        {track.duration > 0 && (
+          <span className="text-white/60 text-sm">
+            {formatTime(track.duration)}
+          </span>
+        )}
+        
+        {isCurrentTrack && isPlaying && (
+          <div className="flex space-x-1">
+            <div className="w-1 h-4 bg-primary-400 rounded animate-pulse" />
+            <div className="w-1 h-4 bg-accent-400 rounded animate-pulse" style={{ animationDelay: '0.2s' }} />
+            <div className="w-1 h-4 bg-primary-400 rounded animate-pulse" style={{ animationDelay: '0.4s' }} />
+          </div>
+        )}
+        
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 transition-all hover:scale-110"
+        >
+          <X className="w-4 h-4 text-red-400" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export const Playlist = React.memo(function Playlist() {
   const { 
     playlist, 
     currentTrack, 
     playTrack, 
     removeFromPlaylist,
+    reorderPlaylist,
     isPlaying 
   } = useAudio();
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id && over) {
+      // Only allow reordering when not searching (using full playlist)
+      if (!searchQuery.trim()) {
+        const oldIndex = playlist.findIndex(track => track.id === active.id);
+        const newIndex = playlist.findIndex(track => track.id === over.id);
+        
+        if (oldIndex !== -1 && newIndex !== -1) {
+          reorderPlaylist(oldIndex, newIndex);
+        }
+      }
+    }
+  };
 
   // Filter tracks based on search query
   const filteredTracks = useMemo(() => {
@@ -120,68 +262,35 @@ export const Playlist = React.memo(function Playlist() {
           <p className="text-white/30 text-sm mt-1">Try a different search term</p>
         </div>
       ) : (
-        <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
-        <AnimatePresence>
-          {filteredTracks.map((track, index) => {
-            const isCurrentTrack = currentTrack?.id === track.id;
-            
-            return (
-              <motion.div
-                key={track.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ delay: index * 0.05 }}
-                className={`playlist-item flex items-center p-3 rounded-lg transition-colors cursor-pointer group ${
-                  isCurrentTrack 
-                    ? 'bg-gradient-to-r from-primary-500/20 to-accent-500/20' 
-                    : 'hover:bg-white/10'
-                }`}
-                onClick={() => playTrack(track)}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className={`font-medium truncate ${
-                    isCurrentTrack ? 'text-white' : 'text-white/90'
-                  }`}>
-                    <HighlightText text={track.title} searchQuery={searchQuery} />
-                  </p>
-                  <p className="text-white/60 text-sm truncate">
-                    <HighlightText text={track.artist} searchQuery={searchQuery} />
-                  </p>
-                </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+            <SortableContext
+              items={filteredTracks.map(track => track.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {filteredTracks.map((track) => {
+                const isCurrentTrack = currentTrack?.id === track.id;
                 
-                <div className="flex items-center space-x-2">
-                  {track.duration > 0 && (
-                    <span className="text-white/60 text-sm">
-                      {formatTime(track.duration)}
-                    </span>
-                  )}
-                  
-                  {isCurrentTrack && isPlaying && (
-                    <div className="flex space-x-1">
-                      <div className="w-1 h-4 bg-primary-400 rounded animate-pulse" />
-                      <div className="w-1 h-4 bg-accent-400 rounded animate-pulse" style={{ animationDelay: '0.2s' }} />
-                      <div className="w-1 h-4 bg-primary-400 rounded animate-pulse" style={{ animationDelay: '0.4s' }} />
-                    </div>
-                  )}
-                  
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeFromPlaylist(track.id);
-                    }}
-                    className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-500/20 transition-all"
-                  >
-                    <X className="w-4 h-4 text-red-400" />
-                  </motion.button>
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-        </div>
+                return (
+                  <SortableTrackItem
+                    key={track.id}
+                    track={track}
+                    isCurrentTrack={isCurrentTrack}
+                    searchQuery={searchQuery}
+                    onPlay={() => playTrack(track)}
+                    onRemove={() => removeFromPlaylist(track.id)}
+                    isPlaying={isPlaying}
+                    isDragDisabled={!!searchQuery} // Disable drag when searching
+                  />
+                );
+              })}
+            </SortableContext>
+          </div>
+        </DndContext>
       )}
     </div>
   );
