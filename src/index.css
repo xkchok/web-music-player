@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen font-sans antialiased;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-500 to-accent-500 hover:from-primary-600 hover:to-accent-600 text-white font-medium px-6 py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl;
+  }
+  
+  .waveform-container {
+    @apply relative overflow-hidden rounded-lg glass;
+  }
+
+  .slider {
+    @apply bg-white/20 rounded-lg appearance-none cursor-pointer;
+    height: 8px;
+  }
+  
+  .slider::-webkit-slider-thumb {
+    @apply appearance-none w-4 h-4 bg-gradient-to-r from-primary-400 to-accent-400 rounded-full cursor-pointer shadow-lg;
+  }
+  
+  .slider::-moz-range-thumb {
+    @apply w-4 h-4 bg-gradient-to-r from-primary-400 to-accent-400 rounded-full cursor-pointer border-0 shadow-lg;
+  }
+}
