@@ -1,54 +1,54 @@
 // Import variables and mixins
-@import 'variables';
-@import 'mixins';
+@use 'variables' as vars;
+@use 'mixins' as mix;
 
 // Component styles
 .glass {
-  @include glass-effect;
+  @include mix.glass-effect;
 }
 
 .btn-primary {
-  @include gradient-button;
+  @include mix.gradient-button;
   @apply text-white font-medium px-6 py-2 rounded-lg shadow-lg;
 }
 
 .waveform-container {
   @apply relative overflow-hidden rounded-lg;
-  @include glass-effect;
+  @include mix.glass-effect;
 }
 
 .slider {
   @apply bg-white/20 rounded-lg appearance-none cursor-pointer;
-  height: $slider-height;
+  height: vars.$slider-height;
   
   &::-webkit-slider-thumb {
     @apply appearance-none rounded-full cursor-pointer shadow-lg;
-    width: $slider-thumb-size;
-    height: $slider-thumb-size;
-    background: $gradient-primary;
+    width: vars.$slider-thumb-size;
+    height: vars.$slider-thumb-size;
+    background: vars.$gradient-primary;
   }
   
   &::-moz-range-thumb {
     @apply rounded-full cursor-pointer border-0 shadow-lg;
-    width: $slider-thumb-size;
-    height: $slider-thumb-size;
-    background: $gradient-primary;
+    width: vars.$slider-thumb-size;
+    height: vars.$slider-thumb-size;
+    background: vars.$gradient-primary;
   }
 }
 
 .custom-scrollbar {
-  @include custom-scrollbar;
+  @include mix.custom-scrollbar;
 }
 
 // GPU acceleration - only when needed
 .gpu-hover {
-  @include hover-scale;
+  @include mix.hover-scale;
 }
 
 // Optimize playlist animations for GPU - only during animation
 .playlist-item {
   contain: layout style paint;
-  @include gpu-acceleration;
+  @include mix.gpu-acceleration;
   
   &.dragging {
     transform: rotate(2deg);
@@ -60,7 +60,7 @@
 
 // Only use will-change during actual interactions
 .control-button {
-  @include gpu-acceleration;
+  @include mix.gpu-acceleration;
   
   &:hover,
   &:active {
@@ -74,7 +74,7 @@
 
 // Drag and drop styles
 .drag-handle {
-  transition: opacity $transition-duration ease-in-out;
+  transition: opacity vars.$transition-duration ease-in-out;
   
   &:hover {
     color: rgb(147 197 253);

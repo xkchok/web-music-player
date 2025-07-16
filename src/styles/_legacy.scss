@@ -1,26 +1,26 @@
 // Import variables and mixins
-@import 'variables';
-@import 'mixins';
+@use 'variables' as vars;
+@use 'mixins' as mix;
 
 #root {
-  max-width: $root-max-width;
+  max-width: vars.$root-max-width;
   margin: 0 auto;
-  padding: $root-padding;
+  padding: vars.$root-padding;
   text-align: center;
 }
 
 .logo {
-  height: $logo-height;
-  padding: $logo-padding;
+  height: vars.$logo-height;
+  padding: vars.$logo-padding;
   will-change: filter;
-  transition: filter $transition-slow;
+  transition: filter vars.$transition-slow;
   
   &:hover {
-    filter: drop-shadow(0 0 2em $primary-blue);
+    filter: drop-shadow(0 0 2em vars.$primary-blue);
   }
   
   &.react:hover {
-    filter: drop-shadow(0 0 2em $react-blue);
+    filter: drop-shadow(0 0 2em vars.$react-blue);
   }
 }
 
@@ -40,9 +40,9 @@
 }
 
 .card {
-  padding: $card-padding;
+  padding: vars.$card-padding;
 }
 
 .read-the-docs {
-  color: $docs-color;
+  color: vars.$docs-color;
 }

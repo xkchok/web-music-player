@@ -1,19 +1,22 @@
+@use 'sass:color';
+@use 'variables' as vars;
+
 // Glass effect mixin
-@mixin glass-effect($bg: $glass-bg, $border: $glass-border, $blur: $glass-backdrop-blur) {
+@mixin glass-effect($bg: vars.$glass-bg, $border: vars.$glass-border, $blur: vars.$glass-backdrop-blur) {
   background: $bg;
   backdrop-filter: blur($blur);
   border: 1px solid $border;
 }
 
 // Gradient button mixin
-@mixin gradient-button($from: $primary-500, $to: $accent-500) {
+@mixin gradient-button($from: vars.$primary-500, $to: vars.$accent-500) {
   background: linear-gradient(45deg, $from, $to);
-  transition: all $transition-duration ease;
+  transition: all vars.$transition-duration ease;
   
   &:hover {
-    background: linear-gradient(45deg, darken($from, 5%), darken($to, 5%));
+    background: linear-gradient(45deg, color.adjust($from, $lightness: -5%), color.adjust($to, $lightness: -5%));
     transform: translateY(-1px);
-    box-shadow: $shadow-lg;
+    box-shadow: vars.$shadow-lg;
   }
   
   &:active {
@@ -22,7 +25,7 @@
 }
 
 // Scrollbar mixin
-@mixin custom-scrollbar($width: $scrollbar-width) {
+@mixin custom-scrollbar($width: vars.$scrollbar-width) {
   scrollbar-width: thin;
   scrollbar-color: rgb(56 189 248 / 0.6) transparent;
   
@@ -36,12 +39,12 @@
   }
   
   &::-webkit-scrollbar-thumb {
-    background: $gradient-scrollbar;
+    background: vars.$gradient-scrollbar;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     
     &:hover {
-      background: $gradient-scrollbar-hover;
+      background: vars.$gradient-scrollbar-hover;
     }
   }
 }
@@ -56,7 +59,7 @@
 // Hover scale effect
 @mixin hover-scale($scale: 1.05) {
   @include gpu-acceleration;
-  transition: transform $transition-duration ease;
+  transition: transform vars.$transition-duration ease;
   
   &:hover {
     will-change: transform;

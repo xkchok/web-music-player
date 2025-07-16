@@ -1,13 +1,13 @@
+// Import SCSS partials first (must come before any other rules)
+@use 'styles/variables';
+@use 'styles/mixins';
+@use 'styles/components';
+@use 'styles/legacy';
+
 // Import Tailwind CSS
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-// Import SCSS partials
-@import 'styles/variables';
-@import 'styles/mixins';
-@import 'styles/components';
-@import 'styles/legacy';
 
 // Base layer customizations
 @layer base {

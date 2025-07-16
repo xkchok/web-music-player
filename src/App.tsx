@@ -1,12 +1,14 @@
-import { useRef } from 'react';
+import { useRef, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { AudioProvider, useAudio } from './contexts/AudioContext';
 import { Waveform } from './components/Waveform';
 import { PlayerControls } from './components/PlayerControls';
 import { TrackInfo } from './components/TrackInfo';
 import { FileUpload } from './components/FileUpload';
-import { Playlist } from './components/Playlist';
 import type { WaveformRef } from './types';
+
+// Lazy load the Playlist component
+const Playlist = lazy(() => import('./components/Playlist').then(module => ({ default: module.Playlist })));
 
 function AudioPlayer() {
   const { currentTrack } = useAudio();
@@ -79,7 +81,13 @@ function AudioPlayer() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <Playlist />
+            <Suspense fallback={
+              <div className="glass rounded-xl p-6 h-96 flex items-center justify-center">
+                <div className="text-white/60">Loading playlist...</div>
+              </div>
+            }>
+              <Playlist />
+            </Suspense>
           </motion.div>
         </div>
       </div>
