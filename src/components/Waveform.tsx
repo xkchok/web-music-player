@@ -1,5 +1,4 @@
 import { useEffect, useRef, forwardRef, useImperativeHandle, useState, useCallback } from 'react';
-import WaveSurfer from 'wavesurfer.js';
 import { Howl } from 'howler';
 import { useAudio } from '../contexts/AudioContext';
 import type { WaveformRef } from '../types';
@@ -12,9 +11,7 @@ interface WaveformProps {
 }
 
 export const Waveform = forwardRef<WaveformRef, WaveformProps>(
-  ({ audioUrl, onReady, onProgress, className = '' }, ref) => {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const wavesurferRef = useRef<WaveSurfer | null>(null);
+  ({ audioUrl, onReady, className = '' }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const animationFrameRef = useRef<number | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -27,10 +24,7 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
     const isCleaningUpRef = useRef(false);
 
     useImperativeHandle(ref, () => ({
-      wavesurfer: wavesurferRef.current,
-      play: () => wavesurferRef.current?.play(),
-      pause: () => wavesurferRef.current?.pause(),
-      seekTo: (progress: number) => wavesurferRef.current?.seekTo(progress),
+      // WaveformRef interface no longer needs WaveSurfer methods
     }));
 
     const setupAudioAnalyser = useCallback(async () => {
@@ -40,36 +34,30 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
         return false;
       }
 
-      // Check if we're already connected to this Howl instance
+
+      // Check if we're already connected to this Howl instance with a working MediaElementSource
       if (connectedHowlRef.current === howl && analyserRef.current && sourceNodeRef.current) {
-        console.log('✅ Already connected to current Howl instance');
         return true;
       }
-
-      console.log('🎵 Setting up audio analyser...');
 
       try {
         // Auto-create AudioContext if not exists
         if (!audioContextRef.current) {
           try {
             audioContextRef.current = new (window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-            console.log('🔊 Auto-created AudioContext');
           } catch (error) {
-            console.log('⚠️ Failed to auto-create AudioContext:', error);
             return false;
           }
         }
 
         if (audioContextRef.current.state === 'suspended') {
           await audioContextRef.current.resume();
-          console.log('▶️ Resumed AudioContext');
         }
 
         // Clean up previous connections more thoroughly
         if (sourceNodeRef.current) {
           try {
             sourceNodeRef.current.disconnect();
-            console.log('🧹 Disconnected previous source');
           } catch {
             // Ignore disconnection errors
           }
@@ -85,7 +73,6 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
             }
             // Clear the source node reference
             prevHowlNode.audioSourceNode = null;
-            console.log('🧹 Cleared connection marker and source node from previous audio node');
           }
         }
 
@@ -96,85 +83,76 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
 
           const bufferLength = analyserRef.current.frequencyBinCount;
           dataArrayRef.current = new Uint8Array(bufferLength);
-          console.log('📊 Analyser configured with', bufferLength, 'frequency bins');
         }
 
         // Try to get Howler's internal audio node
         const howlNode = (howl as Howl & { _sounds?: Array<{ _node?: HTMLAudioElement & { audioSourceNode?: MediaElementAudioSourceNode | null } }> })._sounds?.[0]?._node;
         if (howlNode) {
-          console.log('🎯 Found Howler audio node');
           try {
-            // Only reuse connection if it's the SAME Howl instance
-            if (connectedHowlRef.current === howl && howlNode.getAttribute && howlNode.getAttribute('data-connected') === 'true') {
-              console.log('✅ Same Howl instance, reusing existing connection');
+            // Only reuse connection if it's the SAME Howl instance AND we have a source node
+            if (connectedHowlRef.current === howl && howlNode.getAttribute && howlNode.getAttribute('data-connected') === 'true' && sourceNodeRef.current) {
               return true;
             } else {
               // New track - need fresh connection
               if (howlNode.getAttribute && howlNode.getAttribute('data-connected') === 'true') {
-                console.log('🔄 Different track but node marked connected, clearing and reconnecting');
                 howlNode.removeAttribute('data-connected');
               }
               
               // Clear any existing source node reference for this audio element
               if (howlNode.audioSourceNode) {
-                console.log('🧹 Clearing existing source node reference for new connection');
                 howlNode.audioSourceNode = null;
               }
               
-              // Attempt connection but don't fail if it doesn't work
-              try {
-                // Check if this audio element already has a source node
-                if (howlNode.audioSourceNode) {
-                  console.log('⚠️ Audio element already has source node, reusing it');
-                  sourceNodeRef.current = howlNode.audioSourceNode;
-                } else {
-                  try {
-                    sourceNodeRef.current = audioContextRef.current.createMediaElementSource(howlNode);
-                    howlNode.audioSourceNode = sourceNodeRef.current;
-                    console.log('🎵 Created new MediaElementSource');
-                  } catch (sourceError) {
-                    console.log('⚠️ Failed to create MediaElementSource:', sourceError);
-                    return false;
-                  }
-                }
-
-                // Always connect for visualization, but don't interfere with original audio
+              // Create MediaElementSource when audio is ready
+              if (howlNode.readyState >= 2) { // HAVE_CURRENT_DATA or higher
                 try {
-                  // Connect source to analyser for visualization data
-                  sourceNodeRef.current.connect(analyserRef.current);
-                  
-                  // Also connect to destination to ensure audio continues to play
-                  sourceNodeRef.current.connect(audioContextRef.current.destination);
-                  
-                  console.log('✅ Connected audio source to both analyser and destination');
+                  // Check if this audio element already has a source node
+                  if (howlNode.audioSourceNode) {
+                    sourceNodeRef.current = howlNode.audioSourceNode;
+                  } else {
+                    try {
+                      sourceNodeRef.current = audioContextRef.current.createMediaElementSource(howlNode);
+                      howlNode.audioSourceNode = sourceNodeRef.current;
+                    } catch (sourceError) {
+                      return false;
+                    }
+                  }
+
+                  // Connect to both analyser and destination to maintain audio output
+                  try {
+                    // Connect source to analyser for visualization data
+                    sourceNodeRef.current.connect(analyserRef.current);
+                    
+                    // MUST connect to destination because createMediaElementSource disconnects default routing
+                    sourceNodeRef.current.connect(audioContextRef.current.destination);
+                  } catch (connectionError) {
+                    // If connection fails, audio should still work through Howler's normal routing
+                  }
                 } catch (connectionError) {
-                  console.log('⚠️ Connection failed:', connectionError);
-                  // If connection fails, audio should still work through Howler's normal routing
+                  // Even if connection fails, we can still show fallback visualizer
+                  connectedHowlRef.current = howl;
+                  return false;
                 }
-
-                if (howlNode.setAttribute) {
-                  howlNode.setAttribute('data-connected', 'true');
-                }
-
-                connectedHowlRef.current = howl;
-                console.log('✅ Connected to Howler audio node with gain routing');
-                return true;
-              } catch (connectionError) {
-                console.log('⚠️ Connection failed but continuing with fallback:', connectionError);
-                // Even if connection fails, we can still show fallback visualizer
+              } else {
+                // Don't create MediaElementSource if audio isn't ready
                 connectedHowlRef.current = howl;
                 return false;
               }
+
+              if (howlNode.setAttribute) {
+                howlNode.setAttribute('data-connected', 'true');
+              }
+
+              connectedHowlRef.current = howl;
+              return true;
             }
           } catch (nodeError) {
-            console.log('⚠️ Howler node access failed:', nodeError);
+            // Howler node access failed
           }
         }
 
-        console.log('❌ Could not connect to audio source, using fallback visualizer');
         return false;
       } catch (error) {
-        console.error('❌ Audio analyser setup failed:', error);
         return false;
       }
     }, [getCurrentHowl]);
@@ -278,46 +256,20 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
     }, []);
 
     useEffect(() => {
-      if (!containerRef.current) return;
-
-      wavesurferRef.current = WaveSurfer.create({
-        container: containerRef.current,
-        waveColor: 'rgba(147, 51, 234, 0.4)',
-        progressColor: 'transparent',
-        cursorColor: 'transparent',
-        barWidth: 2,
-        barRadius: 1,
-        barGap: 1,
-        height: 80,
-        normalize: true,
-        interact: false,
-      });
-
-      const ws = wavesurferRef.current;
-
-      ws.on('ready', async () => {
-        setIsReady(true);
-        await setupAudioAnalyser();
-        onReady?.();
-      });
-
-      ws.on('audioprocess', () => {
-        if (ws.getDuration() > 0) {
-          onProgress?.(ws.getCurrentTime() / ws.getDuration());
-        }
-      });
-
-      ws.on('seeking', () => {
-        if (ws.getDuration() > 0) {
-          onProgress?.(ws.getCurrentTime() / ws.getDuration());
-        }
-      });
+      
+      // Reset cleanup flag for new mount
+      isCleaningUpRef.current = false;
+      
+      // Simple ready state - just set ready immediately since we don't need WaveSurfer
+      setIsReady(true);
+      setupAudioAnalyser();
+      onReady?.();
 
       return () => {
-        if (isCleaningUpRef.current) return; // Prevent multiple cleanup calls
+        if (isCleaningUpRef.current) {
+          return;
+        }
         isCleaningUpRef.current = true;
-        
-        console.log('🧹 Starting component cleanup');
         
         if (animationFrameRef.current !== null) {
           cancelAnimationFrame(animationFrameRef.current);
@@ -327,21 +279,10 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
         if (sourceNodeRef.current) {
           try {
             sourceNodeRef.current.disconnect();
-            console.log('🧹 Cleanup: Disconnected source node');
           } catch {
             // Ignore disconnection errors
           }
           sourceNodeRef.current = null;
-        }
-        
-        if (wavesurferRef.current) {
-          try {
-            wavesurferRef.current.destroy();
-            console.log('🧹 Cleanup: Destroyed wavesurfer');
-          } catch {
-            // Ignore errors
-          }
-          wavesurferRef.current = null;
         }
         
         // Only close AudioContext if it exists and isn't already closed
@@ -349,7 +290,6 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
           try {
             if (audioContextRef.current.state !== 'closed') {
               audioContextRef.current.close();
-              console.log('🧹 Cleanup: Closed AudioContext');
             } else {
               console.log('ℹ️ AudioContext already closed, skipping');
             }
@@ -361,11 +301,10 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
         
         connectedHowlRef.current = null;
       };
-    }, [onReady, onProgress]);
+    }, []);
 
     useEffect(() => {
-      if (audioUrl && wavesurferRef.current) {
-        wavesurferRef.current.load(audioUrl);
+      if (audioUrl) {
         // Reset connection state for new track
         connectedHowlRef.current = null;
       }
@@ -392,10 +331,17 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
       }
     }, [isPlaying, isReady, drawFrequencyBars]);
 
+    // Try to connect to audio source when playback starts
+    useEffect(() => {
+      if (isPlaying && isReady) {
+        // Try to setup audio analyser again when playing starts
+        setupAudioAnalyser();
+      }
+    }, [isPlaying, isReady]);
+
 
     return (
       <div className={`waveform-container ${className}`}>
-        <div ref={containerRef} className="w-full hidden opacity-0 absolute pointer-events-none" />
         {isReady && (
           <div className="relative">
             <canvas

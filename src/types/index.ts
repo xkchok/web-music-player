@@ -1,5 +1,3 @@
-import type WaveSurfer from 'wavesurfer.js';
-
 export interface Track {
   id: string;
   title: string;
@@ -28,8 +26,5 @@ export interface AudioState {
 }
 
 export interface WaveformRef {
-  wavesurfer: WaveSurfer | null;
-  play: () => void;
-  pause: () => void;
-  seekTo: (progress: number) => void;
+  // WaveformRef is now just a placeholder - methods not needed
 }

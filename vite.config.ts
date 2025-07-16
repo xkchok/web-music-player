@@ -19,7 +19,7 @@ export default defineConfig({
           }
           
           // Audio processing libraries
-          if (id.includes('howler') || id.includes('wavesurfer.js')) {
+          if (id.includes('howler')) {
             return 'audio-libs';
           }
           
