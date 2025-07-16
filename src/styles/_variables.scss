@@ -1,0 +1,48 @@
+// Color variables
+$primary-color: #3b82f6;
+$accent-color: #8b5cf6;
+$primary-400: #60a5fa;
+$accent-400: #a78bfa;
+$primary-500: #3b82f6;
+$accent-500: #8b5cf6;
+$primary-600: #2563eb;
+$accent-600: #7c3aed;
+
+// Glass effect
+$glass-bg: rgba(255, 255, 255, 0.1);
+$glass-border: rgba(255, 255, 255, 0.2);
+$glass-backdrop-blur: 16px;
+
+// Transitions
+$transition-duration: 200ms;
+$transition-fast: 150ms;
+$transition-slow: 300ms;
+
+// Spacing
+$root-max-width: 1280px;
+$root-padding: 2rem;
+$card-padding: 2rem;
+
+// Components
+$logo-height: 6em;
+$logo-padding: 1.5em;
+$slider-height: 8px;
+$slider-thumb-size: 1rem;
+$scrollbar-width: 8px;
+
+// Colors
+$primary-blue: #646cffaa;
+$react-blue: #61dafbaa;
+$docs-color: #888;
+
+// Shadows
+$shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+$shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+$shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+$shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+// Gradients
+$gradient-primary: linear-gradient(135deg, $primary-color, $accent-color);
+$gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+$gradient-scrollbar: linear-gradient(135deg, rgb(56 189 248 / 0.6), rgb(232 121 249 / 0.6));
+$gradient-scrollbar-hover: linear-gradient(135deg, rgb(56 189 248 / 0.8), rgb(232 121 249 / 0.8));

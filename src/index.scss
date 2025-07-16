@@ -1,0 +1,17 @@
+// Import Tailwind CSS
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+// Import SCSS partials
+@import 'styles/variables';
+@import 'styles/mixins';
+@import 'styles/components';
+@import 'styles/legacy';
+
+// Base layer customizations
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen font-sans antialiased;
+  }
+}

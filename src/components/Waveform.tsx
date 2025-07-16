@@ -201,74 +201,71 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
       if (analyserRef.current && dataArrayRef.current && isConnected) {
         analyserRef.current.getByteFrequencyData(dataArrayRef.current);
 
-        // Check if we're getting any audio data
-        const hasAudioData = Array.from(dataArrayRef.current).some(value => value > 0);
-
         const barCount = 96; // More bars for smoother look
         const barSpacing = 2;
         const barWidth = (canvas.width - (barCount - 1) * barSpacing) / barCount;
         const dataStep = Math.floor(dataArrayRef.current.length / barCount);
 
-        if (hasAudioData) {
-          for (let i = 0; i < barCount; i++) {
-            const dataIndex = i * dataStep;
-            const normalizedValue = dataArrayRef.current[dataIndex] / 255;
-            const barHeight = normalizedValue * canvas.height * 0.85;
-            const x = i * (barWidth + barSpacing);
+        // Always draw real frequency data when connected (even during silent parts)
+        for (let i = 0; i < barCount; i++) {
+          const dataIndex = i * dataStep;
+          const normalizedValue = dataArrayRef.current[dataIndex] / 255;
+          const barHeight = normalizedValue * canvas.height * 0.85;
+          const x = i * (barWidth + barSpacing);
 
-            // Create a more sophisticated gradient
-            const gradient = ctx.createLinearGradient(0, canvas.height - barHeight, 0, canvas.height);
+          // Create a more sophisticated gradient
+          const gradient = ctx.createLinearGradient(0, canvas.height - barHeight, 0, canvas.height);
 
-            // Vary colors based on frequency position and amplitude
-            const hue = 280 + (i / barCount) * 80; // Purple to pink spectrum
-            const saturation = 70 + normalizedValue * 30; // More saturated with higher amplitude
-            const lightness = 45 + normalizedValue * 25; // Brighter with higher amplitude
+          // Vary colors based on frequency position and amplitude
+          const hue = 280 + (i / barCount) * 80; // Purple to pink spectrum
+          const saturation = 70 + normalizedValue * 30; // More saturated with higher amplitude
+          const lightness = 45 + normalizedValue * 25; // Brighter with higher amplitude
 
-            gradient.addColorStop(0, `hsla(${hue}, ${saturation}%, ${lightness + 20}%, 0.9)`);
-            gradient.addColorStop(0.6, `hsla(${hue}, ${saturation}%, ${lightness}%, 0.8)`);
-            gradient.addColorStop(1, `hsla(${hue}, ${saturation}%, ${lightness - 10}%, 0.6)`);
+          gradient.addColorStop(0, `hsla(${hue}, ${saturation}%, ${lightness + 20}%, 0.9)`);
+          gradient.addColorStop(0.6, `hsla(${hue}, ${saturation}%, ${lightness}%, 0.8)`);
+          gradient.addColorStop(1, `hsla(${hue}, ${saturation}%, ${lightness - 10}%, 0.6)`);
 
-            ctx.fillStyle = gradient;
+          ctx.fillStyle = gradient;
 
-            // Draw rounded bars
-            ctx.beginPath();
-            const radius = barWidth / 2;
-            ctx.roundRect(x, canvas.height - barHeight, barWidth, barHeight, radius);
+          // Draw rounded bars
+          ctx.beginPath();
+          const radius = barWidth / 2;
+          ctx.roundRect(x, canvas.height - barHeight, barWidth, barHeight, radius);
+          ctx.fill();
+
+          // Add glow effect for higher frequencies
+          if (normalizedValue > 0.5) {
+            ctx.shadowColor = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.6)`;
+            ctx.shadowBlur = 10;
             ctx.fill();
-
-            // Add glow effect for higher frequencies
-            if (normalizedValue > 0.5) {
-              ctx.shadowColor = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.6)`;
-              ctx.shadowBlur = 10;
-              ctx.fill();
-              ctx.shadowBlur = 0;
-            }
+            ctx.shadowBlur = 0;
           }
-          console.log('📊 Drew enhanced frequency bars with real audio data');
-        } else {
-          // Fallback visualization when no real audio data - create animated bars
-          const barCount = 96;
-          const barSpacing = 2;
-          const barWidth = (canvas.width - (barCount - 1) * barSpacing) / barCount;
-          const time = Date.now() * 0.003; // Slow animation
-          
-          for (let i = 0; i < barCount; i++) {
-            // Create a wave-like pattern
-            const wave = Math.sin(time + i * 0.3) * 0.5 + 0.5;
-            const barHeight = wave * canvas.height * 0.4; // Medium height bars for fallback
-            const x = i * (barWidth + barSpacing);
+        }
+        console.log('📊 Drew enhanced frequency bars with real audio data');
+      } else {
+        // Fallback visualization when not connected to audio analyser
+        console.log('🎭 Drawing fallback visualization (not connected to analyser)');
+        const barCount = 96;
+        const barSpacing = 2;
+        const barWidth = (canvas.width - (barCount - 1) * barSpacing) / barCount;
+        const time = Date.now() * 0.003; // Slow animation
+        
+        for (let i = 0; i < barCount; i++) {
+          // Create a wave-like pattern
+          const wave = Math.sin(time + i * 0.3) * 0.5 + 0.5;
+          const barHeight = wave * canvas.height * 0.4; // Medium height bars for fallback
+          const x = i * (barWidth + barSpacing);
 
-            const hue = 280 + (i / barCount) * 80; // Purple to pink spectrum
-            const gradient = ctx.createLinearGradient(0, canvas.height - barHeight, 0, canvas.height);
-            gradient.addColorStop(0, `hsla(${hue}, 60%, 50%, 0.7)`);
-            gradient.addColorStop(1, `hsla(${hue}, 60%, 30%, 0.5)`);
+          const hue = 280 + (i / barCount) * 80; // Purple to pink spectrum
+          const gradient = ctx.createLinearGradient(0, canvas.height - barHeight, 0, canvas.height);
+          gradient.addColorStop(0, `hsla(${hue}, 60%, 50%, 0.7)`);
+          gradient.addColorStop(1, `hsla(${hue}, 60%, 30%, 0.5)`);
 
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            const radius = barWidth / 2;
-            ctx.roundRect(x, canvas.height - barHeight, barWidth, barHeight, radius);
-            ctx.fill();
-          }
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          const radius = barWidth / 2;
+          ctx.roundRect(x, canvas.height - barHeight, barWidth, barHeight, radius);
+          ctx.fill();
         }
       }
 
@@ -362,7 +359,7 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
         setIsConnected(false);
         connectedHowlRef.current = null;
       };
-    }, [onReady, onProgress, setupAudioAnalyser]);
+    }, [onReady, onProgress]);
 
     useEffect(() => {
       if (audioUrl && wavesurferRef.current) {
@@ -385,7 +382,7 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
 
     return (
       <div className={`waveform-container ${className}`}>
-        <div ref={containerRef} className="w-full hidden" />
+        <div ref={containerRef} className="w-full hidden opacity-0 absolute pointer-events-none" />
         {isReady && (
           <div className="relative">
             <canvas

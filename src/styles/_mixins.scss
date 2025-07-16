@@ -1,0 +1,119 @@
+// Glass effect mixin
+@mixin glass-effect($bg: $glass-bg, $border: $glass-border, $blur: $glass-backdrop-blur) {
+  background: $bg;
+  backdrop-filter: blur($blur);
+  border: 1px solid $border;
+}
+
+// Gradient button mixin
+@mixin gradient-button($from: $primary-500, $to: $accent-500) {
+  background: linear-gradient(45deg, $from, $to);
+  transition: all $transition-duration ease;
+  
+  &:hover {
+    background: linear-gradient(45deg, darken($from, 5%), darken($to, 5%));
+    transform: translateY(-1px);
+    box-shadow: $shadow-lg;
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// Scrollbar mixin
+@mixin custom-scrollbar($width: $scrollbar-width) {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(56 189 248 / 0.6) transparent;
+  
+  &::-webkit-scrollbar {
+    width: $width;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: $gradient-scrollbar;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    &:hover {
+      background: $gradient-scrollbar-hover;
+    }
+  }
+}
+
+// GPU acceleration mixin
+@mixin gpu-acceleration {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+// Hover scale effect
+@mixin hover-scale($scale: 1.05) {
+  @include gpu-acceleration;
+  transition: transform $transition-duration ease;
+  
+  &:hover {
+    will-change: transform;
+    transform: translate3d(0, 0, 0) scale($scale);
+  }
+  
+  &:not(:hover) {
+    will-change: auto;
+  }
+}
+
+// Responsive breakpoints
+@mixin mobile {
+  @media (max-width: 768px) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (min-width: 769px) and (max-width: 1024px) {
+    @content;
+  }
+}
+
+@mixin desktop {
+  @media (min-width: 1025px) {
+    @content;
+  }
+}
+
+// Animation keyframes
+@mixin slide-in-up($duration: 0.3s) {
+  animation: slide-in-up $duration ease-out;
+}
+
+@keyframes slide-in-up {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+// Flex center mixin
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Absolute center mixin
+@mixin absolute-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}

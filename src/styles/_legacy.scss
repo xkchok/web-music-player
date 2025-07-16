@@ -1,0 +1,48 @@
+// Import variables and mixins
+@import 'variables';
+@import 'mixins';
+
+#root {
+  max-width: $root-max-width;
+  margin: 0 auto;
+  padding: $root-padding;
+  text-align: center;
+}
+
+.logo {
+  height: $logo-height;
+  padding: $logo-padding;
+  will-change: filter;
+  transition: filter $transition-slow;
+  
+  &:hover {
+    filter: drop-shadow(0 0 2em $primary-blue);
+  }
+  
+  &.react:hover {
+    filter: drop-shadow(0 0 2em $react-blue);
+  }
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: $card-padding;
+}
+
+.read-the-docs {
+  color: $docs-color;
+}
