@@ -24,7 +24,6 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
     const connectedHowlRef = useRef<Howl | null>(null);
     const { isPlaying, getCurrentHowl } = useAudio();
     const [isReady, setIsReady] = useState(false);
-    const [isConnected, setIsConnected] = useState(false);
     const isCleaningUpRef = useRef(false);
 
     useImperativeHandle(ref, () => ({
@@ -42,7 +41,7 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
       }
 
       // Check if we're already connected to this Howl instance
-      if (connectedHowlRef.current === howl && analyserRef.current && isConnected) {
+      if (connectedHowlRef.current === howl && analyserRef.current && sourceNodeRef.current) {
         console.log('✅ Already connected to current Howl instance');
         return true;
       }
@@ -108,7 +107,6 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
             // Only reuse connection if it's the SAME Howl instance
             if (connectedHowlRef.current === howl && howlNode.getAttribute && howlNode.getAttribute('data-connected') === 'true') {
               console.log('✅ Same Howl instance, reusing existing connection');
-              setIsConnected(true);
               return true;
             } else {
               // New track - need fresh connection
@@ -159,14 +157,12 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
                 }
 
                 connectedHowlRef.current = howl;
-                setIsConnected(true);
                 console.log('✅ Connected to Howler audio node with gain routing');
                 return true;
               } catch (connectionError) {
                 console.log('⚠️ Connection failed but continuing with fallback:', connectionError);
                 // Even if connection fails, we can still show fallback visualizer
                 connectedHowlRef.current = howl;
-                setIsConnected(false); // Keep as false since real connection failed
                 return false;
               }
             }
@@ -181,7 +177,10 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
         console.error('❌ Audio analyser setup failed:', error);
         return false;
       }
-    }, [getCurrentHowl, isConnected]);
+    }, [getCurrentHowl]);
+
+    const isPlayingRef = useRef(isPlaying);
+    isPlayingRef.current = isPlaying;
 
     const drawFrequencyBars = useCallback(() => {
       if (!canvasRef.current) return;
@@ -197,19 +196,21 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
       ctx.fillStyle = bgGradient;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      const hasRealAudioData = analyserRef.current && dataArrayRef.current && sourceNodeRef.current;
+      
       // Try to get real frequency data
-      if (analyserRef.current && dataArrayRef.current && isConnected) {
-        analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+      if (hasRealAudioData) {
+        analyserRef.current!.getByteFrequencyData(dataArrayRef.current!);
 
         const barCount = 96; // More bars for smoother look
         const barSpacing = 2;
         const barWidth = (canvas.width - (barCount - 1) * barSpacing) / barCount;
-        const dataStep = Math.floor(dataArrayRef.current.length / barCount);
+        const dataStep = Math.floor(dataArrayRef.current!.length / barCount);
 
         // Always draw real frequency data when connected (even during silent parts)
         for (let i = 0; i < barCount; i++) {
           const dataIndex = i * dataStep;
-          const normalizedValue = dataArrayRef.current[dataIndex] / 255;
+          const normalizedValue = dataArrayRef.current![dataIndex] / 255;
           const barHeight = normalizedValue * canvas.height * 0.85;
           const x = i * (barWidth + barSpacing);
 
@@ -241,10 +242,8 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
             ctx.shadowBlur = 0;
           }
         }
-        console.log('📊 Drew enhanced frequency bars with real audio data');
       } else {
         // Fallback visualization when not connected to audio analyser
-        console.log('🎭 Drawing fallback visualization (not connected to analyser)');
         const barCount = 96;
         const barSpacing = 2;
         const barWidth = (canvas.width - (barCount - 1) * barSpacing) / barCount;
@@ -269,10 +268,14 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
         }
       }
 
-      if (isPlaying) {
+      // Continue animation loop if playing, regardless of connection state
+      if (isPlayingRef.current) {
         animationFrameRef.current = requestAnimationFrame(drawFrequencyBars);
+      } else {
+        // Clear the animation frame ref when not playing
+        animationFrameRef.current = null;
       }
-    }, [isPlaying, isConnected]);
+    }, []);
 
     useEffect(() => {
       if (!containerRef.current) return;
@@ -356,7 +359,6 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
           audioContextRef.current = null;
         }
         
-        setIsConnected(false);
         connectedHowlRef.current = null;
       };
     }, [onReady, onProgress]);
@@ -365,19 +367,30 @@ export const Waveform = forwardRef<WaveformRef, WaveformProps>(
       if (audioUrl && wavesurferRef.current) {
         wavesurferRef.current.load(audioUrl);
         // Reset connection state for new track
-        setIsConnected(false);
         connectedHowlRef.current = null;
-        console.log('🔄 New track loaded, reset connection state');
       }
     }, [audioUrl]);
 
     useEffect(() => {
-      if (isPlaying) {
-        drawFrequencyBars();
-      } else if (animationFrameRef.current !== null) {
-        cancelAnimationFrame(animationFrameRef.current);
+      if (isPlaying && isReady) {
+        // Only start if not already running
+        if (animationFrameRef.current === null) {
+          drawFrequencyBars();
+        }
+      } else {
+        if (animationFrameRef.current !== null) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
       }
-    }, [isPlaying, drawFrequencyBars]);
+    }, [isPlaying, isReady, drawFrequencyBars]);
+
+    // Restart animation when audio connection changes while playing
+    useEffect(() => {
+      if (isPlaying && isReady && !animationFrameRef.current) {
+        drawFrequencyBars();
+      }
+    }, [isPlaying, isReady, drawFrequencyBars]);
 
 
     return (
