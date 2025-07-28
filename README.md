@@ -81,8 +81,8 @@ A modern, feature-rich audio player built with React 19, TypeScript, and Vite, f
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd audio-player
+git clone https://github.com/xkchok/web-music-player.git
+cd web-music-player
 
 # Install dependencies
 npm install
@@ -183,14 +183,3 @@ src/
 ## 📄 **License**
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🔮 **Future Enhancements**
-
-- [ ] Equalizer with frequency band control
-- [ ] Playlist import/export functionality
-- [ ] Cloud storage integration
-- [ ] Social sharing features
-- [ ] Keyboard shortcuts customization
-- [ ] Multiple theme support
-- [ ] Advanced audio effects (reverb, delay)
-- [ ] Lyrics display and synchronization
